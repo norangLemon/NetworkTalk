@@ -75,6 +75,7 @@ int main(int argc, char** argv){
          } // if
       } // for
    } // while
+   return 0;
 } // main
 
 void error_handling(char *message){
