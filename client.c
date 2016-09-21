@@ -6,6 +6,8 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
+#define PACKET_SIZE 100
+#define SERV_PORT 20403
 /* Client
  * – Activation and deactivation of the client program
  * – Message sending
@@ -29,6 +31,12 @@
  */
 
 char ID[100];
+char message[PACKET_SIZE+1];
+
+void resetBuff(){
+    for (int i = 0; i < PACKET_SIZE+1; i++)
+        message[i] = '\0';
+}
 
 void getID(){
     printf("client ID:");
@@ -53,7 +61,6 @@ int main (int argc, char **argv) {
     // 연결할 서버 주소 정보를 위한 구조체
     struct sockaddr_in server_addr;
     // 서버에서 받아올 데이터 저장 공간
-    char* message = malloc(1024);
     int message_len = 0;
 
     // 서버 접속을 위한 소켓(TCP) 생성
@@ -74,14 +81,16 @@ int main (int argc, char **argv) {
     // write test
     printf("input msg:");
     scanf("%s", message);
-    write(sock_fd, message, sizeof(message));
+    write(sock_fd, message, PACKET_SIZE);
     // read test
-    message_len = read(sock_fd, message, 1024 - 1);
+    resetBuff();
+    message_len = read(sock_fd, message, PACKET_SIZE);
     printf("Message from server: %s \n", message);
     
-    free(message);
 
     // 연결 종료
+
+    scanf("%s", message);
     close(sock_fd);
     return 0;
 }
