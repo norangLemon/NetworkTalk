@@ -9,21 +9,46 @@
 
 #define PACKET_SIZE 100
 #define SERV_PORT 20403
-char message[PACKET_SIZE+1];
+#define ID_LEN 10
+#define MSG_LEN 75
 
-void resetBuff(){
-    for (int i = 0; i < PACKET_SIZE+1; i++)
-        message[i] = '\0';
-}
-void error_handling(char* message);
-struct User_info;
+typedef enum {false, true} bool;
+typedef struct {
+    bool isActive;
+    int fd;
+    int port;
+    char IP[12];
+    char ID[ID_LEN+1];
+    char unread[100][MSG_LEN+1];
+} UserInfo;
+
+void resetBuff();
+void errorHandling();
+int getIdxByID(char ID[ID_LEN]);
+
+char message[PACKET_SIZE+1];
+UserInfo uInfoList[100];
 
 int main(int argc, char** argv){
+    // 유저 정보 리스트를 초기화한다
+    // 편의상 계정 100개를 미리 할당한다.
+    for (int i = 0; i < 100; i++) {
+        UserInfo* u = &uInfoList[i];
+        u->isActive = false;
+        u->fd = -1;
+        u->port = -1;
+    }
+    
+    printf("u0 is active? %d\n", uInfoList[0].isActive);
+    strncpy(uInfoList[0].IP, "hihi", 12);
+    printf("u0's IP: %s\n", uInfoList[0].IP);
+    
+    printf("---------------------\n");
     int serv_sock;
     struct sockaddr_in serv_addr; // 주소 정보를 나타내는 구조체 변수
 
     fd_set reads, temps;
-        int fd_max;
+    int fd_max;
 
     int str_len;
     struct timeval timeout;
@@ -34,9 +59,9 @@ int main(int argc, char** argv){
     serv_addr.sin_port = htons(SERV_PORT);
 
     if (bind(serv_sock, (struct sockaddr *) &serv_addr, sizeof(serv_addr)))
-    error_handling("bind() error");
+    errorHandling("bind() error");
     if (listen(serv_sock, 5) == -1)
-    error_handling("listen() error");
+    errorHandling("listen() error");
 
     FD_ZERO(&reads);
     FD_SET(serv_sock, &reads);
@@ -52,7 +77,7 @@ int main(int argc, char** argv){
         timeout.tv_usec = 0;
 
         if (select(fd_max+1, &temps, 0, 0, &timeout) == -1)
-            error_handling("select() error");
+            errorHandling("select() error");
 
         for (fd = 0; fd < fd_max+1; fd++) {
             if (FD_ISSET(fd, &temps)){
@@ -88,8 +113,15 @@ int main(int argc, char** argv){
     return 0;
 } // main
 
-void error_handling(char *message){
+void resetBuff(){
+    for (int i = 0; i < PACKET_SIZE+1; i++)
+        message[i] = '\0';
+}
+
+void errorHandling(char *message){
     fputs(message, stderr);
     fputc('\n', stderr);
     exit(1);
 }
+
+
