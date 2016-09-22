@@ -126,7 +126,7 @@ int main(int argc, char** argv){
                     str_len = recv(fd, message, PACKET_SIZE, 
                             MSG_PEEK|MSG_DONTWAIT);
                     printf("in buffer[%d](%d): ", fd, str_len);
-                    if (str_len != 0 && str_len != PACKET_SIZE){
+                    if (str_len != 0 && str_len < PACKET_SIZE){
                         printf("패킷의 남은 부분을 기다립니다\n");
                         continue;
                     }
