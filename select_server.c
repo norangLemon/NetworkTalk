@@ -9,9 +9,11 @@
 
 #define PACKET_SIZE 100
 #define SERV_PORT 20403
+
 #define ID_LEN 10
 #define MSG_LEN 75
 #define USER_NUM 100
+
 #define CMTYPE_LOGIN_REQUEST '0'
 #define CMTYPE_SEND_MESSAGE '1'
 
@@ -19,6 +21,7 @@
 #define M_LOGIN_SUCCESS "0 1"
 #define M_ACK_FAIL "2 0"
 #define M_ACK_SUCCESS "2 1"
+
 #define MAX_UNREAD 100
 
 typedef enum {false, true} bool;
@@ -34,7 +37,7 @@ typedef struct {
 
 void resetBuff();
 void errLog(char *message);
-int getIdxByID(char ID[ID_LEN]);
+int getIdxByID(char* ID);
 int getIdxByFd(int fd);
 void clearMsgAt(int userIdx, int msgIdx);
 void setUserInfo(int idx, int fd, struct sockaddr_in clnt_addr);
@@ -136,9 +139,8 @@ int main(int argc, char** argv){
                         
                         // 종료된 클라이언트의 정보를 리셋해준다.
                         idx = getIdxByFd(fd);
-                        if (!connClose(idx))
-                            errLog("wrong connection close");
-                        else printf("exit[%d] %s\n", fd, uInfoList[idx].ID);
+                        if (connClose(idx))
+                            printf("exit[%d] %s\n", fd, uInfoList[idx].ID);
                     } else {
                         // 통상의 메시지 PACKET 처리
                         // 패킷의 맨 앞 숫자를 읽어서 어떤 종류의 패킷인지 확인한다.
@@ -168,29 +170,30 @@ int main(int argc, char** argv){
                                 // 2. 메시지 전달 요청 처리
                                 // 2-1. 수신자 확인 후 ACK
                                 idx = getIdxByID(&message[2]);
+                                printf("idx: %d, to: %s, act: %d\n", idx, uInfoList[idx].ID, uInfoList[idx].isActive);
                                 if (idx < 0){
-                                    // 올바른 유저에게 보낸 경우
-                                    write(fd, M_ACK_SUCCESS, PACKET_SIZE);
-                                } else {
                                     // 없는 유저에게 보낸 경우
                                     write(fd, M_ACK_FAIL, PACKET_SIZE);
+                                    break;
+                                } else {
+                                    // 올바른 유저에게 보낸 경우
+                                    write(fd, M_ACK_SUCCESS, PACKET_SIZE);
                                 }
                                 if (uInfoList[idx].isActive){
                                     // 2-2a. 수신자 Active: 즉시 전송
                                     // fd 번호 찾아다가 -> 바로 write()
+                                    printf("send msg immediately\n");
                                     int receiver_fd = uInfoList[idx].fd;
                                     write(receiver_fd, message, PACKET_SIZE);
                                 } else {
                                     // 2-2b. 수신자 Deactive: unread에 추가/numUnread + 1
+                                    printf("pushUnread\n");
                                     pushUnread(idx, message);
                                 }
                                 break;
                             default:
                                 errLog("wrong type");
                         }
-                       
-                        printf("msg[%d]%s(%d)\n", fd, message, str_len);
-                        write(fd, message, str_len);
                     }
                 }
             } // if
@@ -213,16 +216,14 @@ void errLog(char *message){
 
 int getIdxByID(char* ID){
     printf("ID: '%s'\n", ID);
-    int ret = -1;
     // 없는 아이디인 경우 -1 리턴함
 
     for (int i = 0; i < USER_NUM; i++) {
-        if (strncmp(ID, uInfoList[i].ID, ID_LEN) == 0) {
-            ret = i;
-            break;
+        if (strncmp(ID, uInfoList[i].ID, strlen(uInfoList[i].ID)) == 0) {
+            return i;
         }
     }
-    return ret;
+    return -1;
 }
 
 int getIdxByFd(int fd){
@@ -263,6 +264,7 @@ void sendUnread(int idx) {
     int num = uInfoList[idx].numUnread;
     for (int i = 0; i < num; i++) {
         write(uInfoList[idx].fd, uInfoList[idx].unread[i], PACKET_SIZE);
+        printf("send unread: '%s'", uInfoList[idx].unread[i]);
     }
 
 }
@@ -272,6 +274,7 @@ bool pushUnread(int idx, char* message) {
         return false;
     UserInfo* u = &uInfoList[idx];
     strcpy(u->unread[u->numUnread], message);
+    printf("push unread: '%s'", u->unread[u->numUnread]);
     u->numUnread = u->numUnread + 1;
     return true;
 }
