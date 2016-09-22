@@ -152,7 +152,7 @@ int main(int argc, char** argv){
                                 // 1-1. 유저 정보 조회
                                 idx = getIdxByID(&message[2]);
                                 // 1-2. 로그인 허가/거부
-                                if (idx < 0) {
+                                if (idx < 0 || uInfoList[idx].isActive == true) {
                                    write(fd, M_LOGIN_REJECT, PACKET_SIZE);
                                    printf("login reject: %s\n", &message[2]);
                                    break;
