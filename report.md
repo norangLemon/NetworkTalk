@@ -35,6 +35,12 @@ Network Talk
 
 ## Details of Implementation
 
+### 파일 빌드 및 실행
+1. `make` 하여 컴파일한다
+1. `./server` 하여 서버를 실행한다. 서버는 `cn.snucse.org`에서 실행해야 한다.
+1. `./client` 하여 클라이언트를 실행한다.
+1. `make clean` 하여 실행파일을 지울 수 있다.
+
 ### Socket 통신
 
 * TCP에서 메시지 패킷 하나를 한 번에 전해준다는 보장이 없다.
@@ -45,6 +51,7 @@ Network Talk
 * 서버는 `cn.snucse.org:20403`에 있다.
 
 ### Client
+
 
 로그인 화면에서 아이디를 입력하여 가입된 아이디인 경우, 성공적으로 접속한다.
 그렇지 않은 경우 실패 메시지를 띄우며 다시 아이디를 입력받는다.
