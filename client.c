@@ -88,7 +88,7 @@ int main(int argc, char **argv) {
                 while(recv(sock_fd, message, PACKET_SIZE, MSG_PEEK|MSG_DONTWAIT)>= PACKET_SIZE){
                     // 패킷 크기보다 더 큰 메시지가 쌓여있으면 메시지를 읽어온다.
                     read(sock_fd, message, PACKET_SIZE);
-                    printf("돈다뿅%s\n", displayMsg(message));
+                    printf("%s\n", displayMsg(message));
                 }
                 printf("\n# 메인 메뉴로 돌아가려면 아무 키나 누르십시오:");
                 if(getchar())
@@ -142,11 +142,11 @@ void resetBuff(char* buf) {
 }
 
 void printMainMenu() {
-    printf("--------------------\n");
-    printf("1. Read Message\n");
-    printf("2. Send Message\n");
-    printf("3. Quit\n");
-    printf("--------------------\n");
+    printf("---------------------------------\n");
+    printf("        1. Read Message\n");
+    printf("        2. Send Message\n");
+    printf("        3. Quit\n");
+    printf("---------------------------------\n");
     printf("# 원하는 메뉴의 번호를 입력해주세요: ");
 }
 
@@ -194,7 +194,7 @@ void enqueue(char* msg){
 }
 void dequeue(){
     for(int i = 0; i < queue_size; i++) {
-        printf("죽어라 젠장 디큐%s\n", displayMsg(queue[i]));
+        printf("%s\n", displayMsg(queue[i]));
     }
     queue_size = 0;
 }
