@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <ctype.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/select.h>
@@ -31,7 +32,7 @@ typedef struct {
     int fd;
     int port;
     int numUnread;
-    char IP[12];
+    char IP[20];
     char ID[ID_LEN+1];
     char unread[MAX_UNREAD][MSG_LEN+1];
 } UserInfo;
@@ -159,8 +160,9 @@ int main(int argc, char** argv){
                                 // 1-2. 로그인 허가/거부
                                 if (idx < 0 || uInfoList[idx].isActive == true) {
                                     write(fd, M_LOGIN_REJECT, PACKET_SIZE);
-                                    printf("ACK [login reject](%d, %s:%d): ID %s\n", 
-                                    clnt_sock, inet_ntoa(clnt_addr.sin_addr), clnt_addr.sin_port, &message[2]);
+                                    printf("ACK [login reject](%d, %s:%d): ID %s | idx %d\n", 
+                                    clnt_sock, inet_ntoa(clnt_addr.sin_addr), clnt_addr.sin_port, 
+                                    &message[2], idx);
                                    break;
                                 } else {
                                     write(fd, M_LOGIN_SUCCESS, PACKET_SIZE); 
@@ -171,7 +173,6 @@ int main(int argc, char** argv){
                                 setUserInfo(idx, fd, clnt_addr);
                                 // 1-4. 부재중 매시지 전송
                                 sendUnread(idx);
-
                                break;
                             case (CMTYPE_SEND_MESSAGE):
                                 // 2. 메시지 전달 요청 처리
@@ -180,13 +181,13 @@ int main(int argc, char** argv){
                                 if (idx < 0){
                                     // 없는 유저에게 보낸 경우
                                     write(fd, M_ACK_FAIL, PACKET_SIZE);
-                                    printf("ACK [wrong msg request](%d, %s:%d)", 
+                                    printf("ACK [wrong msg request](%d, %s:%d)\n", 
                                     clnt_sock, inet_ntoa(clnt_addr.sin_addr), clnt_addr.sin_port);
                                     break;
                                 } else {
                                     // 올바른 유저에게 보낸 경우
                                     write(fd, M_ACK_SUCCESS, PACKET_SIZE);
-                                    printf("    [msg request](%d, %s:%d): to %s(isactive: %d)", 
+                                    printf("    [msg request](%d, %s:%d): to %s(isactive: %d)\n", 
                                     clnt_sock, inet_ntoa(clnt_addr.sin_addr), clnt_addr.sin_port, 
                                     uInfoList[idx].ID, uInfoList[idx].isActive);
                                 }
@@ -229,17 +230,24 @@ int getIdxByID(char* ID){
     // 없는 아이디인 경우 -1 리턴함
     int ret = -1;
     for (int i = 0; i < USER_NUM; i++) {
-        if (strncmp(ID, uInfoList[i].ID, strlen(uInfoList[i].ID)) == 0) {
-            ret = i; // 우선 맞는다고 가정하고
-            for(int i = strlen(uInfoList[i].ID); i < ID_LEN; i++) {
-                if(ID[i] != ' ') {
-                    ret = -1; // 뒤에 공백이 아닌 문자가 붙어있다면 다른 아이디라고 본다
-                    continue;
-                }
+        char* list_id = uInfoList[i].ID;
+        for (int j = 0; j < ID_LEN; j++) {
+            if(ID[j] == list_id[j]){
+                ret = i;
+                // 두 문자가 같으면 일단 같을 수 있다
+            } else if (ID[j] == ' '&& list_id[j] == '\0' || ID[j] == '\0' && list_id[j] == ' '){
+                ret = i;
+                // 둘 중 하나가 공백이면서 하나는 널 문자일때도 같을 수 있다.
+            } else {
+                ret = -1;
+                break;
+                // 그렇지 않은 경우 다르다.
             }
         }
+        if (ret != -1) // 끝까지 -1이 아닌 경우, 같은 문자이다.
+            return ret;
     }
-    return i;
+    return ret;
 }
 
 int getIdxByFd(int fd){
