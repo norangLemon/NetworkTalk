@@ -7,7 +7,7 @@
 #include <sys/socket.h>
 
 #define PACKET_SIZE 100
-#define SERV_IP "127.0.0.1"
+#define SERV_IP "147.46.240.40"
 #define SERV_PORT 20403
 
 #define ID_LEN 10
@@ -175,11 +175,11 @@ void getMsgPacket(char* buf) {
     strncpy(buf+2, temp, ID_LEN);
     resetBuff(temp);
 
-    strncpy(buf+(4+ID_LEN), ID, ID_LEN);
+    strncpy(buf+(3+ID_LEN), ID, ID_LEN);
     
     printf("M: ");
     readline(temp, MSG_LEN);
-    strncpy(buf+(6+ID_LEN*2), temp, MSG_LEN);
+    strncpy(buf+(4+ID_LEN*2), temp, MSG_LEN);
 
 
     // 중간에 있는 '\0'는 모두 공백으로 대체한다.
@@ -205,19 +205,19 @@ char* displayMsg(char* msg){
     /* 송신자가 본인임이 확실하기 때문에 띄워주지 않아도 된다
 
      메시지 패킷 형태:
-     123 1234567890 1234567890 MSG (16 + MSG_LEN + ID_LEN)
-     201 receiver   sender     MSG
+     1 1234567890 1234567890 MSG (14 + MSG_LEN + ID_LEN)
+     1 receiver   sender     MSG
     
      띄워줄 형태:
-     12345678912345678901234567MSG (16 + MSG_LEN + ID_LEN)
-     sender:  ID         msg: MSG
+     1234567812345678901234567MSG (14 + MSG_LEN + ID_LEN)
+     sender: ID         msg: MSG
      */
 
     // temp에 띄울 메시지 만들기
-    strcpy(temp, "sender:  ");
-    strncpy(temp+9, msg+(5+ID_LEN), ID_LEN); // ID 복사
-    strcpy(temp+9+ID_LEN, " msg:  ");
-    strncpy(temp+16+ID_LEN, msg+(6+ID_LEN*2), MSG_LEN);
+    strcpy(temp, "sender: ");
+    strncpy(temp+8, msg+(3+ID_LEN), ID_LEN); // ID 복사
+    strcpy(temp+8+ID_LEN, " msg: ");
+    strncpy(temp+14+ID_LEN, msg+(4+ID_LEN*2), MSG_LEN);
 
     // msg에 temp를 덮어씌우기
     strncpy(msg, temp, PACKET_SIZE);

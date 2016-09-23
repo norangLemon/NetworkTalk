@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/select.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
@@ -117,7 +118,7 @@ int main(int argc, char** argv){
                     FD_SET(clnt_sock, &reads);
                     if(fd_max < clnt_sock)
                         fd_max = clnt_sock;
-                    printf("클라이언트 연결: fd-%d | IP-%s | port-%d\n", 
+                    printf("[connected]: fd %d | IP %s | port %d\n", 
                     clnt_sock, inet_ntoa(clnt_addr.sin_addr), clnt_addr.sin_port);
                 } else {
                     // 메시지가 도착하면 0 또는 PACKET_SIZE만큼의 메시지인지 확인한다.
@@ -125,12 +126,14 @@ int main(int argc, char** argv){
                     // 나머지 패킷이 도착할 때까지 읽지 않고 기다린다.
                     str_len = recv(fd, message, PACKET_SIZE, 
                             MSG_PEEK|MSG_DONTWAIT);
-                    printf("in buffer[%d](%d): ", fd, str_len);
+                    printf("[socket buffer check](%d, %s:%d): residure size %d\n", 
+                    clnt_sock, inet_ntoa(clnt_addr.sin_addr), clnt_addr.sin_port, str_len);
                     if (str_len != 0 && str_len < PACKET_SIZE){
-                        printf("패킷의 남은 부분을 기다립니다\n");
+                        printf("[waiting packet]\n");
                         continue;
                     }
-                    printf("패킷을 성공적으로 받아왔습니다\n");
+                    printf("[read packet](%d, %s:%d): msg %s\n", 
+                    clnt_sock, inet_ntoa(clnt_addr.sin_addr), clnt_addr.sin_port, message);
                     str_len = read(fd, message, PACKET_SIZE);
                     if (str_len == 0){
                         // 길이가 0인 경우 종료를 요청하는 메시지이다.
@@ -140,12 +143,14 @@ int main(int argc, char** argv){
                         // 종료된 클라이언트의 정보를 리셋해준다.
                         idx = getIdxByFd(fd);
                         if (connClose(idx))
-                            printf("exit[%d] %s\n", fd, uInfoList[idx].ID);
+                            printf("[exit](%d, %s:%d): ID %s\n", 
+                            clnt_sock, inet_ntoa(clnt_addr.sin_addr), clnt_addr.sin_port, uInfoList[idx].ID);
                     } else {
                         // 통상의 메시지 PACKET 처리
                         // 패킷의 맨 앞 숫자를 읽어서 어떤 종류의 패킷인지 확인한다.
                         type = message[0];
-                        printf("[type%c] '%s'\n", type, message);
+                        printf("[type](%d, %s:%d): %c\n", 
+                        clnt_sock, inet_ntoa(clnt_addr.sin_addr), clnt_addr.sin_port, type);
                         switch (type) {
                             case (CMTYPE_LOGIN_REQUEST):
                                 // 1. 로그인 요청 처리
@@ -153,12 +158,14 @@ int main(int argc, char** argv){
                                 idx = getIdxByID(&message[2]);
                                 // 1-2. 로그인 허가/거부
                                 if (idx < 0 || uInfoList[idx].isActive == true) {
-                                   write(fd, M_LOGIN_REJECT, PACKET_SIZE);
-                                   printf("login reject: %s\n", &message[2]);
+                                    write(fd, M_LOGIN_REJECT, PACKET_SIZE);
+                                    printf("[login reject](%d, %s:%d): ID %s\n", 
+                                    clnt_sock, inet_ntoa(clnt_addr.sin_addr), clnt_addr.sin_port, &message[2]);
                                    break;
                                 } else {
-                                   write(fd, M_LOGIN_SUCCESS, PACKET_SIZE); 
-                                   printf("login success: %s\n", &message[2]);
+                                    write(fd, M_LOGIN_SUCCESS, PACKET_SIZE); 
+                                    printf("[login success](%d, %s:%d): ID %s\n", 
+                                    clnt_sock, inet_ntoa(clnt_addr.sin_addr), clnt_addr.sin_port, &message[2]);
                                 }
                                 // 1-3. 유저 정보 갱신
                                 setUserInfo(idx, fd, clnt_addr);
@@ -170,7 +177,9 @@ int main(int argc, char** argv){
                                 // 2. 메시지 전달 요청 처리
                                 // 2-1. 수신자 확인 후 ACK
                                 idx = getIdxByID(&message[2]);
-                                printf("idx: %d, to: %s, act: %d\n", idx, uInfoList[idx].ID, uInfoList[idx].isActive);
+                                printf("[msg request](%d, %s:%d): to %s(isactive: %d)\n", 
+                                clnt_sock, inet_ntoa(clnt_addr.sin_addr), clnt_addr.sin_port, 
+                                uInfoList[idx].ID, uInfoList[idx].isActive);
                                 if (idx < 0){
                                     // 없는 유저에게 보낸 경우
                                     write(fd, M_ACK_FAIL, PACKET_SIZE);
@@ -182,12 +191,12 @@ int main(int argc, char** argv){
                                 if (uInfoList[idx].isActive){
                                     // 2-2a. 수신자 Active: 즉시 전송
                                     // fd 번호 찾아다가 -> 바로 write()
-                                    printf("send msg immediately\n");
+                                    printf(" -- send msg immediately\n");
                                     int receiver_fd = uInfoList[idx].fd;
                                     write(receiver_fd, message, PACKET_SIZE);
                                 } else {
                                     // 2-2b. 수신자 Deactive: unread에 추가/numUnread + 1
-                                    printf("pushUnread\n");
+                                    printf(" -- pushUnread\n");
                                     pushUnread(idx, message);
                                 }
                                 break;
@@ -215,7 +224,6 @@ void errLog(char *message){
 }
 
 int getIdxByID(char* ID){
-    printf("ID: '%s'\n", ID);
     // 없는 아이디인 경우 -1 리턴함
 
     for (int i = 0; i < USER_NUM; i++) {
@@ -264,9 +272,9 @@ void sendUnread(int idx) {
     int num = uInfoList[idx].numUnread;
     for (int i = 0; i < num; i++) {
         write(uInfoList[idx].fd, uInfoList[idx].unread[i], PACKET_SIZE);
-        printf("send unread: '%s'", uInfoList[idx].unread[i]);
+        printf("[send unread]: to %s | msg %s\n", uInfoList[idx].ID, uInfoList[idx].unread[i]);
     }
-
+    uInfoList[idx].numUnread = 0;
 }
 
 bool pushUnread(int idx, char* message) {
@@ -274,7 +282,7 @@ bool pushUnread(int idx, char* message) {
         return false;
     UserInfo* u = &uInfoList[idx];
     strcpy(u->unread[u->numUnread], message);
-    printf("push unread: '%s'", u->unread[u->numUnread]);
     u->numUnread = u->numUnread + 1;
+    printf("[pust unread]: numUnread %d | msg %s\n", u->numUnread, u->unread[u->numUnread]);
     return true;
 }
