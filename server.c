@@ -230,16 +230,16 @@ int getIdxByID(char* ID){
     int ret = -1;
     for (int i = 0; i < USER_NUM; i++) {
         if (strncmp(ID, uInfoList[i].ID, strlen(uInfoList[i].ID)) == 0) {
-            ret = i;
+            ret = i; // 우선 맞는다고 가정하고
             for(int i = strlen(uInfoList[i].ID); i < ID_LEN; i++) {
                 if(ID[i] != ' ') {
-                    ret = -1;
+                    ret = -1; // 뒤에 공백이 아닌 문자가 붙어있다면 다른 아이디라고 본다
                     continue;
                 }
             }
         }
     }
-    return -1;
+    return i;
 }
 
 int getIdxByFd(int fd){

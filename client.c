@@ -31,6 +31,7 @@ typedef enum {false, true} bool;
 char ID[ID_LEN];
 char message[PACKET_SIZE+1], buf[PACKET_SIZE+1];
 
+void errLog(char *message);
 void readline(char* line, int size);
 void resetBuff(char* buf);
 void getLoginPacket(char* buf);
@@ -70,8 +71,12 @@ int main(int argc, char **argv) {
             printf("logon success.\n");
             resetBuff(message);
             break;
+        } else if (!strncmp(message, M_LOGIN_REJECT, strlen(M_LOGIN_REJECT))){
+            printf("logon fail. try again.\n");
+        } else {
+            errLog("wrong logon ack");
         }
-        printf("logon fail. try again.\n");
+
         resetBuff(message);
     }
 
@@ -123,6 +128,12 @@ int main(int argc, char **argv) {
         }
     }
     return 0;
+}
+
+void errLog(char *message){
+    fputs(message, stderr);
+    fputc('\n', stderr);
+    exit(1);
 }
 
 void readline(char* line, int size) {
