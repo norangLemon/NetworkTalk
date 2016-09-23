@@ -2,7 +2,8 @@ Network Talk
 ---
 
 > 2016-2 컴퓨터네트워크 HW1<br>
-> [과제 요구사항](http://incpaper.snu.ac.kr/images/6/68/CN2016_HW1.pdf)
+
+<p align=right>2010-10403 노윤미</p>
 
 ## Problem statement
 
